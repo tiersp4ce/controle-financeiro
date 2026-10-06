@@ -255,15 +255,41 @@ export class SqliteTransactionRepository implements ITransactionRepository {
     return this.mapRow(row);
   }
 
+  /**
+   * Busca transações pertinentes ao mês informado (regime de caixa e competência).
+   * 
+   * Inclui:
+   * 1. Despesas e receitas cujo vencimento/competência é no mês (strftime('%Y-%m', date) = monthKey)
+   * 2. Despesas que foram quitadas dentro deste mês (isPaid = 1 E strftime('%Y-%m', paidAt) = monthKey),
+   *    mesmo que a data de vencimento seja de um mês futuro (quitação antecipada).
+   */
   async findByMonth(monthKey: string): Promise<Transaction[]> {
     const db = await getDatabase();
     if (!db) {
-      return this.getWebTransactions()
-        .filter((t) => t.date.startsWith(monthKey))
-        .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt);
+      const all = this.getWebTransactions();
+      const filtered = all.filter((t) => {
+        const matchesDate = t.date.startsWith(monthKey);
+        const matchesPaidAt = Boolean(t.isPaid && t.paidAt && t.paidAt.startsWith(monthKey));
+        return matchesDate || matchesPaidAt;
+      });
+
+      // Garantir unicidade por ID caso uma transação atenda a ambos os critérios
+      const uniqueMap = new Map<string, Transaction>();
+      for (const tx of filtered) {
+        uniqueMap.set(tx.id, tx);
+      }
+
+      return Array.from(uniqueMap.values()).sort(
+        (a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt
+      );
     }
+
     const rows = await db.getAllAsync<any>(
-      `SELECT * FROM transactions WHERE strftime('%Y-%m', date) = ? ORDER BY date DESC, createdAt DESC;`,
+      `SELECT DISTINCT * FROM transactions 
+       WHERE strftime('%Y-%m', date) = ? 
+          OR (isPaid = 1 AND strftime('%Y-%m', paidAt) = ?) 
+       ORDER BY date DESC, createdAt DESC;`,
+      monthKey,
       monthKey
     );
     return rows.map(this.mapRow);

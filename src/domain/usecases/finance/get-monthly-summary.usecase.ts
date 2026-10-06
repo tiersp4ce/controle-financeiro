@@ -24,9 +24,32 @@ export class GetMonthlySummaryUseCase {
       if (tx.type === TransactionType.INCOME) {
         extraIncomeCents += tx.amountCents;
       } else {
-        totalExpenseCents += tx.amountCents;
-        const curr = expenseByCategoryMap.get(tx.categoryId) ?? 0;
-        expenseByCategoryMap.set(tx.categoryId, curr + tx.amountCents);
+        /**
+         * Raciocínio Contábil de Despesas (Regime de Caixa vs Competência):
+         * 
+         * 1. Despesa QUITADA (tx.isPaid):
+         *    - Se foi paga no mês atual (tx.paidAt começa com monthKey, ou sem paidAt mas data do mês):
+         *      DEVE ser computada no totalExpenseCents do mês atual e deduzida do saldo (o dinheiro saiu).
+         *    - Se foi paga ANTECIPADAMENTE em um mês anterior ao mês do resumo (paidAt < monthKey):
+         *      NÃO deve ser debitada no mês futuro (monthKey)! O caixa já saiu no passado e não compromete
+         *      mais o salário deste mês.
+         * 
+         * 2. Despesa EM ABERTO (!tx.isPaid):
+         *    - Se seu vencimento é no mês (tx.date começa com monthKey):
+         *      DEVE ser computada no totalExpenseCents como obrigação a pagar no mês.
+         */
+        const isPaidThisMonth = tx.isPaid && (
+          (tx.paidAt && tx.paidAt.startsWith(monthKey)) ||
+          (!tx.paidAt && tx.date.startsWith(monthKey))
+        );
+
+        const isOpenThisMonth = !tx.isPaid && tx.date.startsWith(monthKey);
+
+        if (isPaidThisMonth || isOpenThisMonth) {
+          totalExpenseCents += tx.amountCents;
+          const curr = expenseByCategoryMap.get(tx.categoryId) ?? 0;
+          expenseByCategoryMap.set(tx.categoryId, curr + tx.amountCents);
+        }
       }
     }
 

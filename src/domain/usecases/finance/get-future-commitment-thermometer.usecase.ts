@@ -19,7 +19,17 @@ export class GetFutureCommitmentThermometerUseCase {
       if (tx.type === TransactionType.INCOME) {
         monthIncome += tx.amountCents;
       } else {
-        committedExpenses += tx.amountCents;
+        /**
+         * Raciocínio Contábil do Termômetro de Comprometimento:
+         * 
+         * Apenas despesas que NÃO estão pagas (!tx.isPaid) e cujo vencimento pertence a este mês
+         * comprometem a renda futura projetada.
+         * Parcelas ou despesas já quitadas (mesmo que com vencimento original neste mês)
+         * possuem impacto zero sobre o salário futuro restante.
+         */
+        if (!tx.isPaid && tx.date.startsWith(monthKey)) {
+          committedExpenses += tx.amountCents;
+        }
       }
     }
 
