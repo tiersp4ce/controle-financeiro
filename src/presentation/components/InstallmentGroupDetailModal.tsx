@@ -166,9 +166,9 @@ export const InstallmentGroupDetailModal: React.FC<InstallmentGroupDetailModalPr
                       <Ionicons
                         name={isPaid ? 'checkmark-circle' : 'time-outline'}
                         size={12}
-                        color={isPaid ? '#4CAF50' : '#FF9800'}
+                        color={isPaid ? '#2196F3' : '#FF9800'}
                       />
-                      <Text style={[styles.statusTagText, { color: isPaid ? '#4CAF50' : '#FF9800' }]}>
+                      <Text style={[styles.statusTagText, { color: isPaid ? '#2196F3' : '#FF9800' }]}>
                         {isPaid
                           ? (tx.paidAt ? `Pago em ${formatDateTimeBr(tx.paidAt)}` : 'Pago')
                           : 'Em Aberto'}
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#2196F3',
     borderRadius: 3,
   },
   listHeaderRow: {
@@ -340,8 +340,8 @@ const styles = StyleSheet.create({
     borderColor: '#303030',
   },
   installmentCardPaid: {
-    backgroundColor: '#1C241D',
-    borderColor: '#263828',
+    backgroundColor: '#122030',
+    borderColor: 'rgba(33, 150, 243, 0.3)',
   },
   installmentLeft: {
     flexDirection: 'row',
@@ -355,7 +355,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   badgePaid: {
-    backgroundColor: 'rgba(76, 175, 80, 0.2)',
+    backgroundColor: 'rgba(33, 150, 243, 0.2)',
   },
   badgePending: {
     backgroundColor: 'rgba(187, 134, 252, 0.15)',
@@ -365,7 +365,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   textPaid: {
-    color: '#4CAF50',
+    color: '#2196F3',
   },
   textPending: {
     color: '#BB86FC',

@@ -492,7 +492,7 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
                     <Text style={styles.infoLabel}>Status de Pagamento</Text>
                     {transaction.isPaid ? (
                       <View style={styles.paidBadge}>
-                        <Ionicons name="checkmark-circle" size={14} color="#4CAF50" />
+                        <Ionicons name="checkmark-circle" size={14} color="#2196F3" />
                         <Text style={styles.paidBadgeText}>
                           {transaction.paidAt ? `Pago em ${formatDateTimeBr(transaction.paidAt)}` : 'Pago'}
                         </Text>
@@ -945,13 +945,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: 'rgba(76, 175, 80, 0.15)',
+    backgroundColor: 'rgba(33, 150, 243, 0.15)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
   },
   paidBadgeText: {
-    color: '#4CAF50',
+    color: '#2196F3',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -973,7 +973,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2E7D32',
+    backgroundColor: '#1E88E5',
     paddingVertical: 14,
     borderRadius: 12,
     gap: 8,

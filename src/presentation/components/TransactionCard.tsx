@@ -23,7 +23,11 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
   const prefix = isIncome ? '+' : '-';
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity
+      style={[styles.card, transaction.isPaid && styles.cardPaid]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
       <View style={[styles.iconContainer, { backgroundColor: category?.colorHex ?? '#333' }]}>
         <Ionicons name={(category?.iconKey as any) ?? 'card'} size={20} color="#FFF" />
       </View>
@@ -44,7 +48,7 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
         <View style={styles.badgesRow}>
           {transaction.isPaid && (
             <View style={styles.paidBadge}>
-              <Ionicons name="checkmark-circle" size={10} color="#4CAF50" />
+              <Ionicons name="checkmark-circle" size={10} color="#2196F3" />
               <Text style={styles.paidBadgeText}>Pago</Text>
             </View>
           )}
@@ -74,6 +78,10 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     marginHorizontal: 16,
     marginVertical: 4,
+  },
+  cardPaid: {
+    borderColor: 'rgba(33, 150, 243, 0.35)',
+    borderWidth: 1,
   },
   iconContainer: {
     width: 40,
@@ -135,13 +143,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: '#00E67615',
+    backgroundColor: 'rgba(33, 150, 243, 0.15)',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
   },
   paidBadgeText: {
-    color: '#4CAF50',
+    color: '#2196F3',
     fontSize: 10,
     fontWeight: '600',
   },
