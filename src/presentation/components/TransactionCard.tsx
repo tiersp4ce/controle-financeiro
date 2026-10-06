@@ -41,17 +41,25 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
         <Text style={[styles.amount, { color: amountColor }]}>
           {prefix} {centsToCurrency(transaction.amountCents)}
         </Text>
-        {transaction.installmentNumber && transaction.totalInstallments ? (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>
-              {transaction.installmentNumber}/{transaction.totalInstallments}
-            </Text>
-          </View>
-        ) : Boolean(transaction.recurringTransactionId || transaction.recurrence === 'MONTHLY') ? (
-          <View style={[styles.badge, styles.recurringBadge]}>
-            <Text style={styles.recurringBadgeText}>Fixa</Text>
-          </View>
-        ) : null}
+        <View style={styles.badgesRow}>
+          {transaction.isPaid && (
+            <View style={styles.paidBadge}>
+              <Ionicons name="checkmark-circle" size={10} color="#4CAF50" />
+              <Text style={styles.paidBadgeText}>Pago</Text>
+            </View>
+          )}
+          {transaction.installmentNumber && transaction.totalInstallments ? (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>
+                {transaction.installmentNumber}/{transaction.totalInstallments}
+              </Text>
+            </View>
+          ) : Boolean(transaction.recurringTransactionId || transaction.recurrence === 'MONTHLY') ? (
+            <View style={[styles.badge, styles.recurringBadge]}>
+              <Text style={styles.recurringBadgeText}>Fixa</Text>
+            </View>
+          ) : null}
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -116,5 +124,25 @@ const styles = StyleSheet.create({
     color: '#81C784',
     fontSize: 10,
     fontWeight: 'bold',
+  },
+  badgesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  paidBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#00E67615',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  paidBadgeText: {
+    color: '#4CAF50',
+    fontSize: 10,
+    fontWeight: '600',
   },
 });

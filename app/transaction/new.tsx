@@ -37,6 +37,7 @@ export default function NewTransactionScreen() {
   const [hasStartedBefore, setHasStartedBefore] = useState(false);
   const [startInstallment, setStartInstallment] = useState('5');
   const [dateMode, setDateMode] = useState<InstallmentDateMode>('FIRST_INSTALLMENT');
+  const [notes, setNotes] = useState('');
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [cardConfig, setCardConfig] = useState<CreditCardConfig | null>(null);
@@ -92,6 +93,7 @@ export default function NewTransactionScreen() {
           totalInstallments,
           startInstallmentNumber: startFromNum,
           dateMode: hasStartedBefore ? dateMode : 'FIRST_INSTALLMENT',
+          notes: notes.trim() || null,
         });
       } else {
         await di.createTransaction.execute({
@@ -102,6 +104,7 @@ export default function NewTransactionScreen() {
           categoryId,
           paymentMethod,
           recurrence: isRecurring ? RecurrenceFrequency.MONTHLY : RecurrenceFrequency.NONE,
+          notes: notes.trim() || null,
         });
       }
       router.back();
@@ -417,6 +420,19 @@ export default function NewTransactionScreen() {
         </View>
       )}
 
+      {/* Anotações / Observações */}
+      <View style={styles.inputGroup}>
+        <Text style={styles.label}>Anotações / Observações (opcional)</Text>
+        <TextInput
+          style={[styles.input, styles.notesInput]}
+          placeholder="Ex: comprado na promoção, dividir com João, etc."
+          placeholderTextColor="#666"
+          value={notes}
+          onChangeText={setNotes}
+          multiline
+        />
+      </View>
+
       {/* Botão Salvar */}
       <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
         <Text style={styles.saveButtonText}>Salvar Transação</Text>
@@ -724,5 +740,9 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  notesInput: {
+    height: 64,
+    textAlignVertical: 'top',
   },
 });

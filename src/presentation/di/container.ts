@@ -13,6 +13,7 @@ import { DeleteTransactionUseCase } from '../../domain/usecases/transaction/dele
 import { GetTransactionsByMonthUseCase } from '../../domain/usecases/transaction/get-transactions-by-month.usecase';
 import { GetRecentTransactionsUseCase } from '../../domain/usecases/transaction/get-recent-transactions.usecase';
 import { GetConsolidatedRecentFeedUseCase } from '../../domain/usecases/transaction/get-consolidated-recent-feed.usecase';
+import { ToggleTransactionPaidUseCase } from '../../domain/usecases/transaction/toggle-transaction-paid.usecase';
 
 import { EnsureRecurringTransactionsUseCase } from '../../domain/usecases/recurring/ensure-recurring-transactions.usecase';
 import { CreateRecurringTransactionUseCase } from '../../domain/usecases/recurring/create-recurring-transaction.usecase';
@@ -69,6 +70,7 @@ export interface AppContainer {
   getTransactionsByMonth: GetTransactionsByMonthUseCase;
   getRecentTransactions: GetRecentTransactionsUseCase;
   getConsolidatedRecentFeed: GetConsolidatedRecentFeedUseCase;
+  toggleTransactionPaid: ToggleTransactionPaidUseCase;
 
   ensureRecurringTransactions: EnsureRecurringTransactionsUseCase;
   createRecurringTransaction: CreateRecurringTransactionUseCase;
@@ -135,6 +137,7 @@ export function createContainer(): AppContainer {
     getTransactionsByMonth: new GetTransactionsByMonthUseCase(transactionRepo),
     getRecentTransactions: new GetRecentTransactionsUseCase(transactionRepo),
     getConsolidatedRecentFeed: new GetConsolidatedRecentFeedUseCase(transactionRepo),
+    toggleTransactionPaid: new ToggleTransactionPaidUseCase(transactionRepo),
 
     ensureRecurringTransactions,
     createRecurringTransaction: new CreateRecurringTransactionUseCase(recurringRepo, ensureRecurringTransactions),

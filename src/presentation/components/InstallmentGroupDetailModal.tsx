@@ -11,8 +11,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { RecentFeedItem } from '../../domain/entities/recent-feed';
 import { Category } from '../../domain/entities/category';
 import { Transaction } from '../../domain/entities/transaction';
-import { centsToCurrency } from '../../core/utils/currency';
-import { formatDateBr } from '../../core/utils/date';
+import { centsToCurrency, formatPaymentMethod } from '../../core/utils/currency';
+import { formatDateBr, formatDateTimeBr } from '../../core/utils/date';
 
 type InstallmentGroupFeedItem = Extract<RecentFeedItem, { kind: 'INSTALLMENT_GROUP' }>;
 
@@ -84,7 +84,7 @@ export const InstallmentGroupDetailModal: React.FC<InstallmentGroupDetailModalPr
                   {groupItem.description}
                 </Text>
                 <Text style={styles.subtitle}>
-                  Compra parcelada em {formatDateBr(groupItem.purchaseDate)}
+                  {formatPaymentMethod(groupItem.paymentMethod)} • Compra em {formatDateBr(groupItem.purchaseDate)}
                 </Text>
               </View>
             </View>
@@ -169,7 +169,9 @@ export const InstallmentGroupDetailModal: React.FC<InstallmentGroupDetailModalPr
                         color={isPaid ? '#4CAF50' : '#FF9800'}
                       />
                       <Text style={[styles.statusTagText, { color: isPaid ? '#4CAF50' : '#FF9800' }]}>
-                        {isPaid ? 'Pago' : 'Em Aberto'}
+                        {isPaid
+                          ? (tx.paidAt ? `Pago em ${formatDateTimeBr(tx.paidAt)}` : 'Pago')
+                          : 'Em Aberto'}
                       </Text>
                     </View>
                   </View>

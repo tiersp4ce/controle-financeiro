@@ -13,15 +13,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { Transaction } from '../../domain/entities/transaction';
 import { Category } from '../../domain/entities/category';
 import { PaymentMethod, TransactionType } from '../../domain/enums';
-import { centsToCurrency } from '../../core/utils/currency';
+import { centsToCurrency, formatPaymentMethod } from '../../core/utils/currency';
 import {
   formatDateBr,
+  formatDateTimeBr,
   toIsoDateString,
   toMonthKey,
   brDateToIso,
   formatBrDateInput,
 } from '../../core/utils/date';
 import { AmountInput } from './AmountInput';
+import { ActionOptionModal, ActionOption } from './ActionOptionModal';
 
 interface TransactionDetailModalProps {
   visible: boolean;
@@ -69,7 +71,13 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
   const [amountCents, setAmountCents] = useState(0);
   const [categoryId, setCategoryId] = useState('');
   const [dateStr, setDateStr] = useState('');
+  const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+
+  const [actionModalVisible, setActionModalVisible] = useState(false);
+  const [actionModalTitle, setActionModalTitle] = useState('');
+  const [actionModalSubtitle, setActionModalSubtitle] = useState('');
+  const [actionModalOptions, setActionModalOptions] = useState<ActionOption[]>([]);
 
   useEffect(() => {
     if (transaction) {
@@ -77,6 +85,7 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
       setAmountCents(transaction.amountCents);
       setCategoryId(transaction.categoryId);
       setDateStr(formatDateBr(transaction.date));
+      setNotes(transaction.notes || '');
       setIsEditing(false);
     }
   }, [transaction, visible]);
@@ -110,6 +119,7 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
         amountCents,
         categoryId,
         date: isoDate,
+        notes: notes.trim() || null,
       });
 
       if (updateMode === 'group' && transaction.installmentGroupId && onUpdateGroup) {
@@ -140,6 +150,23 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
     }
   };
 
+  const handleTogglePaid = async () => {
+    try {
+      setIsSaving(true);
+      const nextIsPaid = !transaction.isPaid;
+      await onUpdate({
+        ...transaction,
+        isPaid: nextIsPaid,
+        paidAt: nextIsPaid ? new Date().toISOString() : null,
+      });
+      onClose();
+    } catch (err: any) {
+      Alert.alert('Erro', err.message || 'Falha ao atualizar status de pagamento');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSave = async () => {
     if (amountCents <= 0) {
       Alert.alert('Atenção', 'Informe um valor maior que zero.');
@@ -162,40 +189,56 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
       onUpdateGroup &&
       (description.trim() !== transaction.description || categoryId !== transaction.categoryId)
     ) {
-      Alert.alert(
-        'Atualizar Parcelamento',
-        'Deseja atualizar a descrição e a categoria em todas as parcelas deste grupo?',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          {
-            text: 'Apenas nesta parcela',
-            onPress: () => performSave('single'),
-          },
-          {
-            text: 'Em todas as parcelas',
-            onPress: () => performSave('group'),
-          },
-        ]
-      );
+      setActionModalTitle('Atualizar Parcelamento');
+      setActionModalSubtitle('Deseja atualizar a descrição e a categoria em todas as parcelas deste grupo?');
+      setActionModalOptions([
+        {
+          key: 'single',
+          label: 'Apenas nesta parcela',
+          description: 'Aplica as alterações somente nesta parcela selecionada.',
+          onPress: () => performSave('single'),
+        },
+        {
+          key: 'group',
+          label: 'Em todas as parcelas',
+          description: 'Aplica a nova descrição e categoria a todo o parcelamento.',
+          onPress: () => performSave('group'),
+        },
+        {
+          key: 'cancel',
+          label: 'Cancelar',
+          style: 'cancel',
+          onPress: () => {},
+        },
+      ]);
+      setActionModalVisible(true);
       return;
     }
 
     if (isRecurring && transaction.recurringTransactionId && onUpdateFutureRecurring) {
-      Alert.alert(
-        'Atualizar Transação Recorrente',
-        'Deseja aplicar as alterações apenas neste mês ou atualizar o valor/regra para os próximos meses?',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          {
-            text: 'Apenas neste mês',
-            onPress: () => performSave('single'),
-          },
-          {
-            text: 'Neste e nos próximos meses',
-            onPress: () => performSave('futureRecurring'),
-          },
-        ]
-      );
+      setActionModalTitle('Atualizar Transação Recorrente');
+      setActionModalSubtitle('Deseja aplicar as alterações apenas neste mês ou atualizar a regra para os próximos meses?');
+      setActionModalOptions([
+        {
+          key: 'single',
+          label: 'Apenas neste mês',
+          description: 'Modifica somente a ocorrência deste mês.',
+          onPress: () => performSave('single'),
+        },
+        {
+          key: 'futureRecurring',
+          label: 'Neste e nos próximos meses',
+          description: 'Atualiza o valor e as configurações futuras da despesa fixa.',
+          onPress: () => performSave('futureRecurring'),
+        },
+        {
+          key: 'cancel',
+          label: 'Cancelar',
+          style: 'cancel',
+          onPress: () => {},
+        },
+      ]);
+      setActionModalVisible(true);
       return;
     }
 
@@ -204,41 +247,50 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
 
   const handleAntecipateToToday = async () => {
     const todayIso = toIsoDateString(new Date());
-    Alert.alert(
-      'Antecipar / Amortizar Parcela',
-      `Deseja adiantar o vencimento desta parcela (${transaction.installmentNumber}/${transaction.totalInstallments}) para hoje (${formatDateBr(todayIso)})?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Confirmar Antecipação',
-          onPress: async () => {
-            try {
-              setIsSaving(true);
-              await onUpdate({
-                ...transaction,
-                date: todayIso,
-              });
-              onClose();
-            } catch (err: any) {
-              Alert.alert('Erro', err.message || 'Falha ao antecipar parcela');
-            } finally {
-              setIsSaving(false);
-            }
-          },
-        },
-      ]
+    setActionModalTitle('Antecipar Vencimento da Parcela');
+    setActionModalSubtitle(
+      `Deseja adiantar o vencimento desta parcela (${transaction.installmentNumber}/${transaction.totalInstallments}) para a fatura aberta do mês atual (${formatDateBr(todayIso)})?\n\nEla permanecerá em aberto para pagamento junto à fatura.`
     );
+    setActionModalOptions([
+      {
+        key: 'confirm',
+        label: 'Confirmar Antecipação de Vencimento',
+        icon: 'flash-outline',
+        onPress: async () => {
+          try {
+            setIsSaving(true);
+            await onUpdate({
+              ...transaction,
+              date: todayIso,
+              invoiceMonth: toMonthKey(todayIso),
+              isAnticipated: true,
+            });
+            onClose();
+          } catch (err: any) {
+            Alert.alert('Erro', err.message || 'Falha ao antecipar parcela');
+          } finally {
+            setIsSaving(false);
+          }
+        },
+      },
+      {
+        key: 'cancel',
+        label: 'Cancelar',
+        style: 'cancel',
+        onPress: () => {},
+      },
+    ]);
+    setActionModalVisible(true);
   };
 
   const handleDelete = () => {
     if (isInstallment && transaction.installmentGroupId) {
-      const alertButtons: any[] = [
+      const options: ActionOption[] = [
         {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Apenas esta parcela',
+          key: 'single',
+          label: 'Apenas esta parcela',
+          description: 'Exclui unicamente esta parcela selecionada.',
+          icon: 'trash-outline',
           style: 'destructive',
           onPress: async () => {
             await onDeleteSingle(transaction.id);
@@ -248,8 +300,11 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
       ];
 
       if (onDeleteFuture && transaction.installmentNumber) {
-        alertButtons.push({
-          text: 'Esta e futuras',
+        options.push({
+          key: 'future',
+          label: 'Esta e futuras parcelas',
+          description: `Exclui a partir da parcela ${transaction.installmentNumber} até o fim.`,
+          icon: 'trash-outline',
           style: 'destructive',
           onPress: async () => {
             await onDeleteFuture(transaction.installmentGroupId!, transaction.installmentNumber!);
@@ -259,8 +314,11 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
       }
 
       if (onDeleteGroup) {
-        alertButtons.push({
-          text: 'Todas as parcelas',
+        options.push({
+          key: 'all',
+          label: 'Todas as parcelas',
+          description: 'Exclui todas as parcelas desta compra.',
+          icon: 'trash-outline',
           style: 'destructive',
           onPress: async () => {
             await onDeleteGroup(transaction.installmentGroupId!);
@@ -269,19 +327,26 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
         });
       }
 
-      Alert.alert(
-        'Excluir Transação Parcelada',
-        `Esta despesa faz parte de uma compra em ${transaction.totalInstallments}x (Parcela ${transaction.installmentNumber}). Como deseja excluir?`,
-        alertButtons
+      options.push({
+        key: 'cancel',
+        label: 'Cancelar',
+        style: 'cancel',
+        onPress: () => {},
+      });
+
+      setActionModalTitle('Excluir Transação Parcelada');
+      setActionModalSubtitle(
+        `Esta despesa faz parte de uma compra em ${transaction.totalInstallments}x (Parcela ${transaction.installmentNumber}). Como deseja excluir?`
       );
+      setActionModalOptions(options);
+      setActionModalVisible(true);
     } else if (isRecurring && transaction.recurringTransactionId) {
-      const alertButtons: any[] = [
+      const options: ActionOption[] = [
         {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Apenas deste mês',
+          key: 'skip',
+          label: 'Apenas deste mês',
+          description: 'Pula ou remove a ocorrência deste mês específico.',
+          icon: 'trash-outline',
           style: 'destructive',
           onPress: async () => {
             if (onSkipRecurringMonth) {
@@ -295,8 +360,11 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
       ];
 
       if (onEndRecurrence) {
-        alertButtons.push({
-          text: 'Encerrar recorrência (deste mês em diante)',
+        options.push({
+          key: 'end',
+          label: 'Encerrar recorrência (deste mês em diante)',
+          description: 'Mantém meses passados e desativa as ocorrências futuras.',
+          icon: 'stop-circle-outline',
           style: 'destructive',
           onPress: async () => {
             await onEndRecurrence(transaction.recurringTransactionId!, competenceMonth);
@@ -306,8 +374,11 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
       }
 
       if (onDeleteAllRecurring) {
-        alertButtons.push({
-          text: 'Excluir todas as ocorrências',
+        options.push({
+          key: 'all',
+          label: 'Excluir todas as ocorrências',
+          description: 'Apaga o histórico completo e a regra desta despesa fixa.',
+          icon: 'trash-outline',
           style: 'destructive',
           onPress: async () => {
             await onDeleteAllRecurring(transaction.recurringTransactionId!);
@@ -316,27 +387,39 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
         });
       }
 
-      Alert.alert(
-        'Excluir Transação Fixa / Recorrente',
-        `Esta transação é uma despesa/receita fixa mensal. Como deseja proceder?`,
-        alertButtons
-      );
+      options.push({
+        key: 'cancel',
+        label: 'Cancelar',
+        style: 'cancel',
+        onPress: () => {},
+      });
+
+      setActionModalTitle('Excluir Transação Fixa / Recorrente');
+      setActionModalSubtitle('Esta transação é uma despesa/receita fixa mensal. Como deseja proceder?');
+      setActionModalOptions(options);
+      setActionModalVisible(true);
     } else {
-      Alert.alert(
-        'Confirmar Exclusão',
-        `Deseja realmente excluir a transação "${transaction.description}"?`,
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          {
-            text: 'Excluir',
-            style: 'destructive',
-            onPress: async () => {
-              await onDeleteSingle(transaction.id);
-              onClose();
-            },
+      setActionModalTitle('Confirmar Exclusão');
+      setActionModalSubtitle(`Deseja realmente excluir a transação "${transaction.description}"?`);
+      setActionModalOptions([
+        {
+          key: 'delete',
+          label: 'Sim, Excluir',
+          icon: 'trash-outline',
+          style: 'destructive',
+          onPress: async () => {
+            await onDeleteSingle(transaction.id);
+            onClose();
           },
-        ]
-      );
+        },
+        {
+          key: 'cancel',
+          label: 'Cancelar',
+          style: 'cancel',
+          onPress: () => {},
+        },
+      ]);
+      setActionModalVisible(true);
     }
   };
 
@@ -401,9 +484,40 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
 
                   <View style={styles.infoRow}>
                     <Text style={styles.infoLabel}>Forma de Pagamento</Text>
-                    <Text style={styles.infoValue}>{transaction.paymentMethod}</Text>
+                    <Text style={styles.infoValue}>{formatPaymentMethod(transaction.paymentMethod)}</Text>
                   </View>
                   <View style={styles.divider} />
+
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Status de Pagamento</Text>
+                    {transaction.isPaid ? (
+                      <View style={styles.paidBadge}>
+                        <Ionicons name="checkmark-circle" size={14} color="#4CAF50" />
+                        <Text style={styles.paidBadgeText}>
+                          {transaction.paidAt ? `Pago em ${formatDateTimeBr(transaction.paidAt)}` : 'Pago'}
+                        </Text>
+                      </View>
+                    ) : (
+                      <View style={styles.unpaidBadge}>
+                        <Ionicons name="time-outline" size={14} color="#FFA726" />
+                        <Text style={styles.unpaidBadgeText}>Em aberto</Text>
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.divider} />
+
+                  {transaction.notes ? (
+                    <>
+                      <View style={styles.notesBox}>
+                        <View style={styles.notesHeader}>
+                          <Ionicons name="document-text-outline" size={14} color="#03DAC6" />
+                          <Text style={styles.notesLabel}>Anotações:</Text>
+                        </View>
+                        <Text style={styles.notesText}>{transaction.notes}</Text>
+                      </View>
+                      <View style={styles.divider} />
+                    </>
+                  ) : null}
 
                   {isRecurring && (
                     <>
@@ -451,15 +565,39 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
                   )}
                 </View>
 
-                {/* BOTÃO RÁPIDO DE ANTECIPAÇÃO (CASO SEJA PARCELA FUTURA) */}
-                {isInstallment && (
+                {/* BOTÕES DE QUITAÇÃO DA DESPESA / PARCELA */}
+                {!transaction.isPaid ? (
+                  <TouchableOpacity
+                    style={styles.payNowButton}
+                    onPress={handleTogglePaid}
+                    disabled={isSaving}
+                  >
+                    <Ionicons name="checkmark-circle" size={18} color="#FFF" />
+                    <Text style={styles.payNowButtonText}>
+                      {isInstallment ? '✓ Quitar Parcela Agora' : '✓ Quitar Despesa Agora'}
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.unpayButton}
+                    onPress={handleTogglePaid}
+                    disabled={isSaving}
+                  >
+                    <Ionicons name="arrow-undo-outline" size={16} color="#AAA" />
+                    <Text style={styles.unpayButtonText}>Desfazer Quitação (Marcar em Aberto)</Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* BOTÃO DE ANTECIPAÇÃO DE VENCIMENTO (CASO SEJA PARCELA FUTURA NÃO PAGA) */}
+                {isInstallment && !transaction.isPaid && (
                   <TouchableOpacity
                     style={styles.antecipateButton}
                     onPress={handleAntecipateToToday}
+                    disabled={isSaving}
                   >
-                    <Ionicons name="flash-outline" size={16} color="#03DAC6" />
+                    <Ionicons name="calendar-outline" size={16} color="#03DAC6" />
                     <Text style={styles.antecipateButtonText}>
-                      Antecipar / Quitar no Mês Atual
+                      Antecipar Vencimento para Mês Atual
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -545,6 +683,16 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
                   })}
                 </ScrollView>
 
+                <Text style={styles.inputLabel}>Anotações / Observações (opcional)</Text>
+                <TextInput
+                  style={[styles.textInput, styles.notesInput]}
+                  value={notes}
+                  onChangeText={setNotes}
+                  placeholder="Ex: comprado na promoção, garantia de 1 ano, etc."
+                  placeholderTextColor="#666"
+                  multiline
+                />
+
                 <View style={styles.actionsRow}>
                   <TouchableOpacity
                     style={styles.cancelButton}
@@ -569,6 +717,14 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
           </ScrollView>
         </View>
       </View>
+
+      <ActionOptionModal
+        visible={actionModalVisible}
+        title={actionModalTitle}
+        subtitle={actionModalSubtitle}
+        options={actionModalOptions}
+        onClose={() => setActionModalVisible(false)}
+      />
     </Modal>
   );
 };
@@ -784,5 +940,92 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 15,
     fontWeight: '600',
+  },
+  paidBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(76, 175, 80, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  paidBadgeText: {
+    color: '#4CAF50',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  unpaidBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(255, 167, 38, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  unpaidBadgeText: {
+    color: '#FFA726',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  payNowButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2E7D32',
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+    marginVertical: 6,
+  },
+  payNowButtonText: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: 'bold',
+  },
+  unpayButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#252525',
+    borderWidth: 1,
+    borderColor: '#444',
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+    marginVertical: 6,
+  },
+  unpayButtonText: {
+    color: '#AAA',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  notesBox: {
+    paddingVertical: 6,
+  },
+  notesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  notesLabel: {
+    color: '#03DAC6',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  notesText: {
+    color: '#DDD',
+    fontSize: 13,
+    lineHeight: 18,
+    backgroundColor: '#171717',
+    padding: 10,
+    borderRadius: 8,
+  },
+  notesInput: {
+    height: 70,
+    textAlignVertical: 'top',
+    marginBottom: 16,
   },
 });
