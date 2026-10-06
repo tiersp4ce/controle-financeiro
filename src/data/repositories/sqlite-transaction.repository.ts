@@ -373,4 +373,20 @@ export class SqliteTransactionRepository implements ITransactionRepository {
     }
     await db.runAsync(`DELETE FROM transactions;`);
   }
+
+  /**
+   * Conta a quantidade de transações associadas a uma categoria específica.
+   * Suporta tanto banco SQLite nativo (COUNT rápido com índice) quanto Web localStorage.
+   */
+  async countByCategoryId(categoryId: string): Promise<number> {
+    const db = await getDatabase();
+    if (!db) {
+      return this.getWebTransactions().filter((t) => t.categoryId === categoryId).length;
+    }
+    const result = await db.getFirstAsync<{ count: number }>(
+      `SELECT COUNT(*) as count FROM transactions WHERE categoryId = ?;`,
+      categoryId
+    );
+    return result?.count ?? 0;
+  }
 }

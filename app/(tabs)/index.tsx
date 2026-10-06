@@ -23,6 +23,7 @@ import { Transaction } from '../../src/domain/entities/transaction';
 import { Category } from '../../src/domain/entities/category';
 import { PaymentMethod } from '../../src/domain/enums';
 
+import { RecentFeedItem } from '../../src/domain/entities/recent-feed';
 import { MonthSelectorHeader } from '../../src/presentation/components/MonthSelectorHeader';
 import { ThermometerCard } from '../../src/presentation/components/ThermometerCard';
 import { CategoryExpenseDonutChart } from '../../src/presentation/components/CategoryExpenseDonutChart';
@@ -33,6 +34,8 @@ import { CreditCardInvoiceCard } from '../../src/presentation/components/CreditC
 import { AdvanceInstallmentsModal } from '../../src/presentation/components/AdvanceInstallmentsModal';
 import { TransactionCard } from '../../src/presentation/components/TransactionCard';
 import { TransactionDetailModal } from '../../src/presentation/components/TransactionDetailModal';
+import { ConsolidatedInstallmentCard } from '../../src/presentation/components/ConsolidatedInstallmentCard';
+import { InstallmentGroupDetailModal } from '../../src/presentation/components/InstallmentGroupDetailModal';
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -48,7 +51,9 @@ export default function DashboardScreen() {
   const [cardConfig, setCardConfig] = useState<CreditCardConfig | null>(null);
   const [invoiceSummary, setInvoiceSummary] = useState<CreditCardInvoiceSummary | null>(null);
   const [futureInstallments, setFutureInstallments] = useState<Transaction[]>([]);
-  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
+  const [recentFeedItems, setRecentFeedItems] = useState<RecentFeedItem[]>([]);
+  const [selectedInstallmentGroup, setSelectedInstallmentGroup] = useState<Extract<RecentFeedItem, { kind: 'INSTALLMENT_GROUP' }> | null>(null);
+  const [isInstallmentGroupModalVisible, setIsInstallmentGroupModalVisible] = useState(false);
   const [categories, setCategories] = useState<Map<string, Category>>(new Map());
   const [categoriesList, setCategoriesList] = useState<Category[]>([]);
 
@@ -64,7 +69,7 @@ export default function DashboardScreen() {
       await di.ensureRecurringTransactions.execute(currentMonthKey);
 
       // 2. Consultas em paralelo com dados consolidados
-      const [sum, therm, savings, salary, card, invoice, overview, recent, cats] = await Promise.all([
+      const [sum, therm, savings, salary, card, invoice, overview, feedItems, cats] = await Promise.all([
         di.getMonthlySummary.execute(currentMonthKey),
         di.getThermometer.execute(currentMonthKey),
         di.getSavingsAverage.execute(6, currentMonthKey),
@@ -72,7 +77,7 @@ export default function DashboardScreen() {
         di.getCreditCardConfig.execute(),
         di.getCreditCardInvoice.execute(currentMonthKey),
         di.getCreditCardInvoicesOverview.execute(currentMonthKey),
-        di.getRecentTransactions.execute(5),
+        di.getConsolidatedRecentFeed.execute(5),
         di.getCategories.execute(),
       ]);
 
@@ -88,7 +93,7 @@ export default function DashboardScreen() {
       overview.futureInvoices.forEach((fInv) => allFutureTxs.push(...fInv.transactions));
       setFutureInstallments(allFutureTxs);
 
-      setRecentTransactions(recent);
+      setRecentFeedItems(feedItems);
       setCategoriesList(cats);
       setCategories(new Map(cats.map((c) => [c.id, c])));
     } catch (err) {
@@ -306,7 +311,7 @@ export default function DashboardScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Transações Recentes */}
+      {/* Transações Recentes / Atividades Consolidadas */}
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Últimas Transações</Text>
         <TouchableOpacity onPress={() => router.push('/(tabs)/transactions')}>
@@ -314,19 +319,40 @@ export default function DashboardScreen() {
         </TouchableOpacity>
       </View>
 
-      {recentTransactions.length === 0 ? (
+      {recentFeedItems.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyText}>Nenhuma transação registrada ainda.</Text>
         </View>
       ) : (
-        recentTransactions.map((tx) => (
-          <TransactionCard
-            key={tx.id}
-            transaction={tx}
-            category={categories.get(tx.categoryId)}
-            onPress={() => handleOpenDetail(tx)}
-          />
-        ))
+        recentFeedItems.map((item) => {
+          if (item.kind === 'INSTALLMENT_GROUP') {
+            return (
+              <ConsolidatedInstallmentCard
+                key={`group_${item.groupId}`}
+                description={item.description}
+                totalAmountCents={item.totalAmountCents}
+                totalInstallments={item.totalInstallments}
+                paidInstallmentsCount={item.paidInstallmentsCount}
+                installmentAmountCents={item.installmentAmountCents}
+                purchaseDate={item.purchaseDate}
+                category={categories.get(item.categoryId)}
+                onPress={() => {
+                  setSelectedInstallmentGroup(item);
+                  setIsInstallmentGroupModalVisible(true);
+                }}
+              />
+            );
+          }
+
+          return (
+            <TransactionCard
+              key={item.transaction.id}
+              transaction={item.transaction}
+              category={categories.get(item.transaction.categoryId)}
+              onPress={() => handleOpenDetail(item.transaction)}
+            />
+          );
+        })
       )}
 
       {/* Modais */}
@@ -350,6 +376,20 @@ export default function DashboardScreen() {
         targetInvoiceMonth={currentMonthKey}
         onAdvance={handleAdvanceInstallments}
         onClose={() => setIsAdvanceModalVisible(false)}
+      />
+
+      <InstallmentGroupDetailModal
+        visible={isInstallmentGroupModalVisible}
+        groupItem={selectedInstallmentGroup}
+        category={selectedInstallmentGroup ? categories.get(selectedInstallmentGroup.categoryId) : undefined}
+        onClose={() => {
+          setIsInstallmentGroupModalVisible(false);
+          setSelectedInstallmentGroup(null);
+        }}
+        onSelectInstallment={(tx) => {
+          setIsInstallmentGroupModalVisible(false);
+          handleOpenDetail(tx);
+        }}
       />
 
       <TransactionDetailModal

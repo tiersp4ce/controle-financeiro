@@ -1,15 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CreditCardInvoiceSummary } from '../../domain/entities/credit-card-invoice';
 import { CreditCardConfig } from '../../domain/entities/credit-card-config';
 import { centsToCurrency } from '../../core/utils/currency';
 import { formatDateBr } from '../../core/utils/date';
+import { ConfirmInvoicePaymentModal } from './ConfirmInvoicePaymentModal';
 
 interface CreditCardInvoiceCardProps {
   invoice: CreditCardInvoiceSummary;
   cardConfig: CreditCardConfig | null;
-  onPayInvoice: () => void;
+  onPayInvoice: () => void | Promise<void>;
   onOpenAdvanceModal: () => void;
   onConfigureCard: () => void;
 }
@@ -21,6 +22,8 @@ export const CreditCardInvoiceCard: React.FC<CreditCardInvoiceCardProps> = ({
   onOpenAdvanceModal,
   onConfigureCard,
 }) => {
+  const [isConfirmModalVisible, setIsConfirmModalVisible] = useState(false);
+
   if (!cardConfig || !cardConfig.isEnabled) {
     return (
       <TouchableOpacity style={styles.bannerContainer} onPress={onConfigureCard}>
@@ -103,13 +106,23 @@ export const CreditCardInvoiceCard: React.FC<CreditCardInvoiceCardProps> = ({
         {!isPaid && invoice.totalAmountCents > 0 && (
           <TouchableOpacity
             style={styles.payButton}
-            onPress={onPayInvoice}
+            onPress={() => setIsConfirmModalVisible(true)}
           >
             <Ionicons name="checkmark-circle-outline" size={15} color="#FFF" />
             <Text style={styles.payButtonText}>Marcar como Paga</Text>
           </TouchableOpacity>
         )}
       </View>
+
+      <ConfirmInvoicePaymentModal
+        visible={isConfirmModalVisible}
+        invoice={invoice}
+        cardName={cardConfig.cardName}
+        onConfirm={async () => {
+          await onPayInvoice();
+        }}
+        onClose={() => setIsConfirmModalVisible(false)}
+      />
     </View>
   );
 };

@@ -1,7 +1,11 @@
 import { ICategoryRepository } from '../../repositories/category.repository';
 import { IRecurringTransactionRepository } from '../../repositories/recurring-transaction.repository';
+import { ITransactionRepository } from '../../repositories/transaction.repository';
 import { Category } from '../../entities/category';
-import { CategoryInUseByRecurringError } from '../../errors/category-errors';
+import {
+  CategoryInUseByRecurringError,
+  CategoryInUseByTransactionsError,
+} from '../../errors/category-errors';
 
 export interface DeleteCategoryOptions {
   forceCascade?: boolean;
@@ -14,14 +18,22 @@ export class GetCategoriesUseCase {
   }
 }
 
+/**
+ * Cria uma nova categoria personalizada com validação de nome mínimo (>= 2 caracteres).
+ */
 export class CreateCategoryUseCase {
   constructor(private readonly categoryRepository: ICategoryRepository) {}
+
   async execute(name: string, iconKey: string, colorHex: string): Promise<Category> {
+    const trimmedName = (name ?? '').trim();
+    if (trimmedName.length < 2) {
+      throw new Error('O nome da categoria deve conter no mínimo 2 caracteres.');
+    }
     const category: Category = {
       id: `cat_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      name: name.trim(),
-      iconKey,
-      colorHex,
+      name: trimmedName,
+      iconKey: iconKey || 'folder',
+      colorHex: colorHex || '#78909C',
       isDefault: false,
     };
     await this.categoryRepository.create(category);
@@ -36,10 +48,15 @@ export class UpdateCategoryUseCase {
   }
 }
 
+/**
+ * Exclui uma categoria personalizada, impedindo exclusão de categorias padrão do sistema
+ * e garantindo que não haja transações ou regras de recorrência ativas vinculadas.
+ */
 export class DeleteCategoryUseCase {
   constructor(
     private readonly categoryRepository: ICategoryRepository,
-    private readonly recurringRepository?: IRecurringTransactionRepository
+    private readonly recurringRepository?: IRecurringTransactionRepository,
+    private readonly transactionRepository?: ITransactionRepository
   ) {}
 
   async execute(id: string, options?: DeleteCategoryOptions): Promise<void> {
@@ -49,6 +66,18 @@ export class DeleteCategoryUseCase {
       throw new Error('Categorias padrão do sistema não podem ser excluídas.');
     }
 
+    // 1. Valida se existem transações vinculadas à categoria
+    if (this.transactionRepository) {
+      const activeTransactionsCount = await this.transactionRepository.countByCategoryId(id);
+      if (activeTransactionsCount > 0 && !options?.forceCascade) {
+        throw new CategoryInUseByTransactionsError(
+          activeTransactionsCount,
+          `A categoria "${category.name}" está vinculada a ${activeTransactionsCount} transação(ões) ativa(s).`
+        );
+      }
+    }
+
+    // 2. Valida se existem regras recorrentes vinculadas à categoria
     if (this.recurringRepository) {
       const activeRecurringCount = await this.recurringRepository.countByCategoryId(id);
       if (activeRecurringCount > 0 && !options?.forceCascade) {

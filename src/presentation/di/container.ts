@@ -12,6 +12,7 @@ import { UpdateTransactionUseCase } from '../../domain/usecases/transaction/upda
 import { DeleteTransactionUseCase } from '../../domain/usecases/transaction/delete-transaction.usecase';
 import { GetTransactionsByMonthUseCase } from '../../domain/usecases/transaction/get-transactions-by-month.usecase';
 import { GetRecentTransactionsUseCase } from '../../domain/usecases/transaction/get-recent-transactions.usecase';
+import { GetConsolidatedRecentFeedUseCase } from '../../domain/usecases/transaction/get-consolidated-recent-feed.usecase';
 
 import { EnsureRecurringTransactionsUseCase } from '../../domain/usecases/recurring/ensure-recurring-transactions.usecase';
 import { CreateRecurringTransactionUseCase } from '../../domain/usecases/recurring/create-recurring-transaction.usecase';
@@ -67,6 +68,7 @@ export interface AppContainer {
   deleteTransaction: DeleteTransactionUseCase;
   getTransactionsByMonth: GetTransactionsByMonthUseCase;
   getRecentTransactions: GetRecentTransactionsUseCase;
+  getConsolidatedRecentFeed: GetConsolidatedRecentFeedUseCase;
 
   ensureRecurringTransactions: EnsureRecurringTransactionsUseCase;
   createRecurringTransaction: CreateRecurringTransactionUseCase;
@@ -132,6 +134,7 @@ export function createContainer(): AppContainer {
     deleteTransaction: new DeleteTransactionUseCase(transactionRepo),
     getTransactionsByMonth: new GetTransactionsByMonthUseCase(transactionRepo),
     getRecentTransactions: new GetRecentTransactionsUseCase(transactionRepo),
+    getConsolidatedRecentFeed: new GetConsolidatedRecentFeedUseCase(transactionRepo),
 
     ensureRecurringTransactions,
     createRecurringTransaction: new CreateRecurringTransactionUseCase(recurringRepo, ensureRecurringTransactions),
@@ -156,7 +159,7 @@ export function createContainer(): AppContainer {
     getCategories: new GetCategoriesUseCase(categoryRepo),
     createCategory: new CreateCategoryUseCase(categoryRepo),
     updateCategory: new UpdateCategoryUseCase(categoryRepo),
-    deleteCategory: new DeleteCategoryUseCase(categoryRepo, recurringRepo),
+    deleteCategory: new DeleteCategoryUseCase(categoryRepo, recurringRepo, transactionRepo),
     seedDefaultCategories: new SeedDefaultCategoriesUseCase(categoryRepo),
 
     isPinSet: new IsPinSetUseCase(securityRepo),

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Alert,
   Modal,
@@ -11,7 +11,17 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Transaction } from '../../domain/entities/transaction';
 import { centsToCurrency } from '../../core/utils/currency';
-import { formatDateBr, toIsoDateString } from '../../core/utils/date';
+import { formatDateBr, formatMonthYearBr, toIsoDateString } from '../../core/utils/date';
+
+/**
+ * Representa um agrupamento de parcelas futuras por mês de fatura.
+ */
+export interface MonthGroupedInstallments {
+  monthKey: string;          // Ex: "2026-11"
+  monthLabel: string;        // Ex: "Novembro de 2026"
+  totalAmountCents: number;
+  installments: Transaction[];
+}
 
 interface AdvanceInstallmentsModalProps {
   visible: boolean;
@@ -21,6 +31,15 @@ interface AdvanceInstallmentsModalProps {
   onClose: () => void;
 }
 
+/**
+ * Modal didático de antecipação de parcelas futuras do cartão de crédito.
+ *
+ * Permite ao usuário filtrar as parcelas futuras mês a mês através de chips/abas
+ * horizontais, facilitando a decisão financeira (ex: adiantar apenas as compras de um
+ * mês específico com excedente de renda ou 13º salário).
+ *
+ * Preserva seleção múltipla individual ou em lote, com recálculo transparente em centavos.
+ */
 export const AdvanceInstallmentsModal: React.FC<AdvanceInstallmentsModalProps> = ({
   visible,
   futureInstallments,
@@ -29,7 +48,43 @@ export const AdvanceInstallmentsModal: React.FC<AdvanceInstallmentsModalProps> =
   onClose,
 }) => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState<string>('ALL'); // 'ALL' ou 'YYYY-MM'
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Agrupa as parcelas futuras por mês de competência/fatura (YYYY-MM)
+  const monthGroups = useMemo<MonthGroupedInstallments[]>(() => {
+    const map = new Map<string, Transaction[]>();
+
+    for (const item of futureInstallments) {
+      const key = item.invoiceMonth || item.date.substring(0, 7);
+      if (!map.has(key)) {
+        map.set(key, []);
+      }
+      map.get(key)!.push(item);
+    }
+
+    const sortedKeys = Array.from(map.keys()).sort();
+
+    return sortedKeys.map((key) => {
+      const items = map.get(key)!;
+      const totalAmountCents = items.reduce((acc, curr) => acc + curr.amountCents, 0);
+      return {
+        monthKey: key,
+        monthLabel: formatMonthYearBr(key),
+        totalAmountCents,
+        installments: items,
+      };
+    });
+  }, [futureInstallments]);
+
+  // Itens atualmente visíveis de acordo com a aba/chip selecionado
+  const displayedInstallments = useMemo<Transaction[]>(() => {
+    if (activeTab === 'ALL') {
+      return futureInstallments;
+    }
+    const group = monthGroups.find((g) => g.monthKey === activeTab);
+    return group ? group.installments : [];
+  }, [activeTab, futureInstallments, monthGroups]);
 
   const toggleSelect = (id: string) => {
     const next = new Set(selectedIds);
@@ -38,12 +93,18 @@ export const AdvanceInstallmentsModal: React.FC<AdvanceInstallmentsModalProps> =
     setSelectedIds(next);
   };
 
-  const selectAll = () => {
-    if (selectedIds.size === futureInstallments.length) {
-      setSelectedIds(new Set());
+  // Seleciona ou desmarca todos os itens visíveis na tela atual
+  const toggleSelectVisible = () => {
+    const visibleIds = displayedInstallments.map((t) => t.id);
+    const allVisibleSelected = visibleIds.every((id) => selectedIds.has(id));
+
+    const next = new Set(selectedIds);
+    if (allVisibleSelected) {
+      visibleIds.forEach((id) => next.delete(id));
     } else {
-      setSelectedIds(new Set(futureInstallments.map((t) => t.id)));
+      visibleIds.forEach((id) => next.add(id));
     }
+    setSelectedIds(next);
   };
 
   const selectedTotalCents = futureInstallments
@@ -69,6 +130,10 @@ export const AdvanceInstallmentsModal: React.FC<AdvanceInstallmentsModalProps> =
     }
   };
 
+  const isCurrentTabAllSelected =
+    displayedInstallments.length > 0 &&
+    displayedInstallments.every((t) => selectedIds.has(t.id));
+
   return (
     <Modal
       visible={visible}
@@ -78,42 +143,98 @@ export const AdvanceInstallmentsModal: React.FC<AdvanceInstallmentsModalProps> =
     >
       <View style={styles.overlay}>
         <View style={styles.container}>
+          {/* Cabeçalho */}
           <View style={styles.header}>
-            <View>
+            <View style={styles.headerTitleContainer}>
               <Text style={styles.title}>Antecipar Parcelas Futuras</Text>
               <Text style={styles.subtitle}>
                 Puxe parcelas dos próximos meses para a fatura atual ({targetInvoiceMonth}).
               </Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <Ionicons name="close" size={24} color="#888" />
             </TouchableOpacity>
           </View>
 
+          {/* Abas / Chips de Navegação por Mês */}
           {futureInstallments.length > 0 && (
-            <TouchableOpacity style={styles.selectAllBtn} onPress={selectAll}>
-              <Text style={styles.selectAllText}>
-                {selectedIds.size === futureInstallments.length
-                  ? 'Desmarcar Todas'
-                  : 'Selecionar Todas'}
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.chipsWrapper}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.chipsScrollContainer}
+              >
+                <TouchableOpacity
+                  style={[styles.chip, activeTab === 'ALL' && styles.chipActive]}
+                  onPress={() => setActiveTab('ALL')}
+                >
+                  <Text style={[styles.chipText, activeTab === 'ALL' && styles.chipTextActive]}>
+                    Todos ({futureInstallments.length})
+                  </Text>
+                </TouchableOpacity>
+
+                {monthGroups.map((group) => {
+                  const isActive = activeTab === group.monthKey;
+                  const [year, month] = group.monthKey.split('-');
+                  const shortLabel = `${month}/${year.slice(2)}`;
+                  const selectedInGroup = group.installments.filter((t) => selectedIds.has(t.id)).length;
+
+                  return (
+                    <TouchableOpacity
+                      key={group.monthKey}
+                      style={[styles.chip, isActive && styles.chipActive]}
+                      onPress={() => setActiveTab(group.monthKey)}
+                    >
+                      <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
+                        {shortLabel} ({group.installments.length})
+                      </Text>
+                      {selectedInGroup > 0 && (
+                        <View style={styles.chipSelectedDot} />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
           )}
 
-          <ScrollView style={styles.list}>
+          {/* Barra de Ação em Lote (Selecionar Visíveis) */}
+          {displayedInstallments.length > 0 && (
+            <View style={styles.batchActionRow}>
+              <Text style={styles.batchInfoText}>
+                {activeTab === 'ALL'
+                  ? 'Exibindo todas as parcelas futuras'
+                  : `Fatura de ${monthGroups.find((g) => g.monthKey === activeTab)?.monthLabel ?? activeTab}`}
+              </Text>
+              <TouchableOpacity onPress={toggleSelectVisible}>
+                <Text style={styles.selectAllText}>
+                  {isCurrentTabAllSelected ? 'Desmarcar Mês' : 'Marcar Todos'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Lista de Parcelas */}
+          <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
             {futureInstallments.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <Ionicons name="checkmark-circle-outline" size={44} color="#4CAF50" />
                 <Text style={styles.emptyText}>Não há parcelas futuras para antecipar.</Text>
               </View>
+            ) : displayedInstallments.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="information-circle-outline" size={40} color="#888" />
+                <Text style={styles.emptyText}>Nenhuma parcela encontrada para este mês.</Text>
+              </View>
             ) : (
-              futureInstallments.map((item) => {
+              displayedInstallments.map((item) => {
                 const isSelected = selectedIds.has(item.id);
                 return (
                   <TouchableOpacity
                     key={item.id}
                     style={[styles.itemCard, isSelected && styles.itemCardSelected]}
                     onPress={() => toggleSelect(item.id)}
+                    activeOpacity={0.7}
                   >
                     <View style={[styles.checkbox, isSelected && styles.checkboxChecked]}>
                       {isSelected && <Ionicons name="checkmark" size={14} color="#FFF" />}
@@ -121,7 +242,7 @@ export const AdvanceInstallmentsModal: React.FC<AdvanceInstallmentsModalProps> =
                     <View style={styles.itemInfo}>
                       <Text style={styles.itemTitle}>{item.description}</Text>
                       <Text style={styles.itemDate}>
-                        Previsto: {formatDateBr(item.date)} • Fatura {item.invoiceMonth}
+                        Previsto: {formatDateBr(item.date)} • Fatura: {item.invoiceMonth || item.date.substring(0, 7)}
                       </Text>
                     </View>
                     <Text style={styles.itemAmount}>{centsToCurrency(item.amountCents)}</Text>
@@ -131,15 +252,24 @@ export const AdvanceInstallmentsModal: React.FC<AdvanceInstallmentsModalProps> =
             )}
           </ScrollView>
 
+          {/* Barra de Resumo de Antecipação */}
           {selectedIds.size > 0 && (
             <View style={styles.summaryBar}>
-              <Text style={styles.summaryLabel}>Total selecionado ({selectedIds.size}):</Text>
+              <View>
+                <Text style={styles.summaryLabel}>Total selecionado ({selectedIds.size}):</Text>
+                <Text style={styles.summaryHint}>Será debitado na fatura atual</Text>
+              </View>
               <Text style={styles.summaryValue}>{centsToCurrency(selectedTotalCents)}</Text>
             </View>
           )}
 
+          {/* Botões de Ação */}
           <View style={styles.buttonRow}>
-            <TouchableOpacity style={styles.cancelButton} onPress={onClose} disabled={isSubmitting}>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={onClose}
+              disabled={isSubmitting}
+            >
               <Text style={styles.cancelButtonText}>Cancelar</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -168,7 +298,7 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#1E1E1E',
     borderRadius: 20,
-    maxHeight: '85%',
+    maxHeight: '88%',
     borderWidth: 1,
     borderColor: '#2E2E2E',
     overflow: 'hidden',
@@ -181,6 +311,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#282828',
   },
+  headerTitleContainer: {
+    flex: 1,
+    marginRight: 8,
+  },
   title: {
     color: '#FFF',
     fontSize: 17,
@@ -190,24 +324,71 @@ const styles = StyleSheet.create({
     color: '#888',
     fontSize: 12,
     marginTop: 4,
-    maxWidth: 240,
   },
   closeBtn: {
     padding: 4,
   },
-  selectAllBtn: {
-    alignSelf: 'flex-end',
+  chipsWrapper: {
+    backgroundColor: '#181818',
+    borderBottomWidth: 1,
+    borderBottomColor: '#282828',
+  },
+  chipsScrollContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#262626',
+    borderWidth: 1,
+    borderColor: '#383838',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  chipActive: {
+    backgroundColor: '#03DAC622',
+    borderColor: '#03DAC6',
+  },
+  chipText: {
+    color: '#AAA',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  chipTextActive: {
+    color: '#03DAC6',
+    fontWeight: 'bold',
+  },
+  chipSelectedDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#03DAC6',
+  },
+  batchActionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
+  batchInfoText: {
+    color: '#888',
+    fontSize: 12,
+  },
   selectAllText: {
     color: '#03DAC6',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
   },
   list: {
     paddingHorizontal: 16,
-    maxHeight: 320,
+    maxHeight: 300,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -271,13 +452,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#161616',
     paddingHorizontal: 18,
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderTopWidth: 1,
     borderTopColor: '#282828',
   },
   summaryLabel: {
     color: '#AAA',
-    fontSize: 13,
+    fontSize: 12,
+  },
+  summaryHint: {
+    color: '#666',
+    fontSize: 10,
   },
   summaryValue: {
     color: '#03DAC6',

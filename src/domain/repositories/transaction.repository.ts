@@ -19,4 +19,9 @@ export interface ITransactionRepository {
   findRecent(limit: number): Promise<Transaction[]>;
   findAll(): Promise<Transaction[]>;
   deleteAll(): Promise<void>;
+  /**
+   * Retorna a contagem de transações vinculadas a uma determinada categoria.
+   * Utilizado para garantir integridade referencial antes da exclusão de categorias.
+   */
+  countByCategoryId(categoryId: string): Promise<number>;
 }

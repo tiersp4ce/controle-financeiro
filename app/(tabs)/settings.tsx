@@ -128,11 +128,14 @@ ${res.transactionCount} transações, ${res.categoryCount} categorias e ${res.re
       <View style={styles.item}>
         <Ionicons name="repeat" size={22} color="#81C784" />
         <View style={styles.itemInfo}>
-          <Text style={styles.itemTitle}>Despesas / Receitas Fixas Ativas</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={styles.itemTitle}>Despesas / Receitas Fixas</Text>
+            <View style={{ backgroundColor: '#FF980025', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+              <Text style={{ color: '#FF9800', fontSize: 10, fontWeight: '700' }}>EM DESENVOLVIMENTO</Text>
+            </View>
+          </View>
           <Text style={styles.itemSubtitle}>
-            {activeRecurrings.length > 0
-              ? `${activeRecurrings.length} regra(s) ativa(s) gerando lançamentos mensais`
-              : 'Nenhuma regra fixa ativa no momento'}
+            Gerenciador avançado de regras fixas em breve
           </Text>
         </View>
       </View>
