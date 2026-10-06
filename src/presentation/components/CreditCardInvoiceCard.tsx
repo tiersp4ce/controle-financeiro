@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { CreditCardInvoiceSummary } from '../../domain/entities/credit-card-invoice';
 import { CreditCardConfig } from '../../domain/entities/credit-card-config';
 import { centsToCurrency } from '../../core/utils/currency';
-import { formatDateBr } from '../../core/utils/date';
+import { formatDateBr, formatMonthYearBr, formatDateTimeBr } from '../../core/utils/date';
 import { ConfirmInvoicePaymentModal } from './ConfirmInvoicePaymentModal';
 
 interface CreditCardInvoiceCardProps {
@@ -70,10 +70,20 @@ export const CreditCardInvoiceCard: React.FC<CreditCardInvoiceCardProps> = ({
       </View>
 
       <View style={styles.amountSection}>
-        <Text style={styles.amountLabel}>Total da Fatura ({invoice.invoiceMonth})</Text>
+        <Text style={styles.amountLabel}>
+          Total da Fatura ({formatMonthYearBr(invoice.invoiceMonth)})
+        </Text>
         <Text style={[styles.amountValue, isPaid && { color: '#4CAF50' }]}>
           {centsToCurrency(invoice.totalAmountCents)}
         </Text>
+        {isPaid && invoice.paidAt ? (
+          <View style={styles.paidInfoRow}>
+            <Ionicons name="checkmark-done-circle" size={14} color="#4CAF50" />
+            <Text style={styles.paidInfoText}>
+              Fatura quitada em {formatDateTimeBr(invoice.paidAt)}
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       <View style={styles.datesRow}>
@@ -195,14 +205,32 @@ const styles = StyleSheet.create({
     marginVertical: 4,
   },
   amountLabel: {
-    color: '#888',
-    fontSize: 12,
+    color: '#BBB',
+    fontSize: 13,
+    fontWeight: '600',
     marginBottom: 2,
+    textTransform: 'capitalize',
   },
   amountValue: {
     color: '#FF5252',
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: 'bold',
+  },
+  paidInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+    backgroundColor: '#00E67615',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  paidInfoText: {
+    color: '#4CAF50',
+    fontSize: 12,
+    fontWeight: '600',
   },
   datesRow: {
     flexDirection: 'row',
