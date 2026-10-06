@@ -14,6 +14,7 @@ export interface CreateTransactionInput {
   categoryId: string;
   paymentMethod: PaymentMethod;
   recurrence?: RecurrenceFrequency;
+  notes?: string | null;
 }
 
 export class CreateTransactionUseCase {
@@ -77,7 +78,9 @@ export class CreateTransactionUseCase {
       purchaseDate,
       invoiceMonth,
       isPaid: false,
+      paidAt: null,
       isAnticipated: false,
+      notes: input.notes?.trim() || null,
       recurringTransactionId,
       createdAt: Date.now(),
     };

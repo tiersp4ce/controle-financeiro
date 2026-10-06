@@ -15,7 +15,9 @@ export interface Transaction {
   purchaseDate?: string | null; // Data real em que a compra foi feita
   invoiceMonth?: string | null; // Mês da fatura correspondente (YYYY-MM)
   isPaid?: boolean;             // Se a transação/fatura foi quitada
+  paidAt?: string | null;       // ISO YYYY-MM-DDTHH:mm:ss.sssZ (Timestamp exato da quitação)
   isAnticipated?: boolean;      // Se foi antecipada
+  notes?: string | null;        // Anotações contextuais livres opcionais
   recurringTransactionId?: string | null; // ID da regra recorrente de origem
   createdAt: number;
 }

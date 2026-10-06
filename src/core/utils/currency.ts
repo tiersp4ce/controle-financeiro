@@ -22,3 +22,27 @@ export function formatCentsInput(cents: number): string {
   const decimal = cents % 100;
   return `R$ ${reais.toLocaleString('pt-BR')},${decimal.toString().padStart(2, '0')}`;
 }
+
+/**
+ * Mapeia enums técnicos de formas de pagamento para rótulos legíveis e amigáveis em português.
+ * Suporta o enum formal PaymentMethod ou strings diretas persistidas.
+ */
+export function formatPaymentMethod(method: string | null | undefined): string {
+  if (!method) return 'Outro';
+  switch (method) {
+    case 'CREDIT_CARD':
+      return 'Cartão de Crédito';
+    case 'DEBIT_CARD':
+      return 'Cartão de Débito';
+    case 'BANK_SLIP':
+      return 'Boleto';
+    case 'PIX':
+      return 'Pix';
+    case 'CASH':
+      return 'Dinheiro';
+    case 'OTHER':
+    default:
+      return 'Outro';
+  }
+}
+

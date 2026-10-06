@@ -12,6 +12,7 @@ export interface CreditCardInvoiceSummary {
   remainingAmountCents: number;  // Saldo devedor restante
   transactionsCount: number;
   transactions: Transaction[];
+  paidAt?: string | null;        // Data/hora da quitação da fatura quando status === 'PAID'
 }
 
 export interface InvoicesOverview {

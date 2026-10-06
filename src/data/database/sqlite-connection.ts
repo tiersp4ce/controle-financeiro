@@ -100,4 +100,17 @@ async function initDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
       PRAGMA user_version = 3;
     `);
   }
+
+  if (currentVersion < 4) {
+    const tableInfo = await db.getAllAsync<{ name: string }>('PRAGMA table_info(transactions);');
+    const cols = new Set(tableInfo.map((c) => c.name));
+    if (!cols.has('paidAt')) {
+      await db.execAsync('ALTER TABLE transactions ADD COLUMN paidAt TEXT;');
+    }
+    if (!cols.has('notes')) {
+      await db.execAsync('ALTER TABLE transactions ADD COLUMN notes TEXT;');
+    }
+    await db.execAsync('PRAGMA user_version = 4;');
+  }
 }
+

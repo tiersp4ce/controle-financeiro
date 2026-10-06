@@ -24,6 +24,7 @@ export interface CreateInstallmentInput {
   totalInstallments: number; // N >= 2
   startInstallmentNumber?: number; // Padrão: 1 (ex: 5 para começar da 5ª parcela de 12)
   dateMode?: InstallmentDateMode; // Padrão: 'FIRST_INSTALLMENT'
+  notes?: string | null;
 }
 
 export class CreateInstallmentTransactionUseCase {
@@ -46,6 +47,7 @@ export class CreateInstallmentTransactionUseCase {
     }
 
     const cleanDescription = input.description.trim();
+    const cleanNotes = input.notes?.trim() || null;
     const dateMode = input.dateMode ?? 'FIRST_INSTALLMENT';
     const startFrom = Math.max(1, Math.min(input.startInstallmentNumber ?? 1, input.totalInstallments));
 
@@ -130,7 +132,9 @@ export class CreateInstallmentTransactionUseCase {
         purchaseDate,
         invoiceMonth: installmentInvoiceMonth,
         isPaid: false,
+        paidAt: null,
         isAnticipated: false,
+        notes: cleanNotes,
         createdAt: now + i,
       };
 

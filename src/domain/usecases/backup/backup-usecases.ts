@@ -30,7 +30,7 @@ export class ExportBackupJsonUseCase {
       : null;
 
     const backupData: BackupData = {
-      version: 4,
+      version: 5,
       exportedAt: new Date().toISOString(),
       categories,
       transactions,

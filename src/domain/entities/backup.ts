@@ -5,7 +5,7 @@ import { CreditCardConfig } from './credit-card-config';
 import { RecurringTransaction } from './recurring-transaction';
 
 export interface BackupData {
-  version: number; // v4
+  version: number; // v5
   exportedAt: string;
   categories: Category[];
   transactions: Transaction[];

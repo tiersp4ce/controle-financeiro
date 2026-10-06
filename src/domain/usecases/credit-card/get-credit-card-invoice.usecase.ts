@@ -36,8 +36,16 @@ export class GetCreditCardInvoiceUseCase {
     const currentMonthKey = toMonthKey(new Date());
 
     let status: InvoiceStatus = 'OPEN';
+    let paidAt: string | null = null;
+
     if (allPaid && totalAmountCents > 0) {
       status = 'PAID';
+      // Busca a data/hora mais recente de quitação entre as despesas da fatura
+      const paidDates = cardExpenses
+        .map((tx) => tx.paidAt)
+        .filter((d): d is string => Boolean(d))
+        .sort();
+      paidAt = paidDates.length > 0 ? paidDates[paidDates.length - 1] : new Date().toISOString();
     } else if (invoiceMonthKey > currentMonthKey) {
       status = 'FUTURE';
     } else if (todayIso >= closingDate) {
@@ -56,6 +64,7 @@ export class GetCreditCardInvoiceUseCase {
       remainingAmountCents: Math.max(0, totalAmountCents - paidAmountCents),
       transactionsCount: cardExpenses.length,
       transactions: cardExpenses,
+      paidAt,
     };
   }
 }

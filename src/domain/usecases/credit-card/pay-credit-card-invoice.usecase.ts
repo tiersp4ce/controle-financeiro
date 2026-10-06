@@ -16,11 +16,14 @@ export class PayCreditCardInvoiceUseCase {
       (tx) => tx.type === TransactionType.EXPENSE && tx.paymentMethod === PaymentMethod.CREDIT_CARD
     );
 
+    const nowIso = new Date().toISOString();
     const updatedList: Transaction[] = [];
     for (const tx of cardExpenses) {
       const updated: Transaction = {
         ...tx,
         isPaid: true,
+        // Preserva o timestamp caso uma parcela tenha sido quitada antecipadamente de forma avulsa
+        paidAt: tx.paidAt || nowIso,
       };
       await this.transactionRepository.update(updated);
       updatedList.push(updated);

@@ -34,7 +34,9 @@ export class SqliteTransactionRepository implements ITransactionRepository {
       purchaseDate: row.purchaseDate ?? row.date,
       invoiceMonth: row.invoiceMonth ?? row.date.substring(0, 7),
       isPaid: Boolean(row.isPaid),
+      paidAt: row.paidAt ?? null,
       isAnticipated: Boolean(row.isAnticipated),
+      notes: row.notes ?? null,
       recurringTransactionId: row.recurringTransactionId ?? null,
       createdAt: row.createdAt,
     };
@@ -52,9 +54,9 @@ export class SqliteTransactionRepository implements ITransactionRepository {
       `INSERT INTO transactions (
         id, description, amountCents, type, date, categoryId,
         paymentMethod, recurrence, installmentGroupId, installmentNumber,
-        totalInstallments, purchaseDate, invoiceMonth, isPaid, isAnticipated,
-        recurringTransactionId, createdAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+        totalInstallments, purchaseDate, invoiceMonth, isPaid, paidAt,
+        isAnticipated, notes, recurringTransactionId, createdAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
       t.id,
       t.description,
       t.amountCents,
@@ -69,7 +71,9 @@ export class SqliteTransactionRepository implements ITransactionRepository {
       t.purchaseDate ?? t.date,
       t.invoiceMonth ?? t.date.substring(0, 7),
       t.isPaid ? 1 : 0,
+      t.paidAt ?? null,
       t.isAnticipated ? 1 : 0,
+      t.notes ?? null,
       t.recurringTransactionId ?? null,
       t.createdAt
     );
@@ -90,9 +94,9 @@ export class SqliteTransactionRepository implements ITransactionRepository {
           `INSERT OR REPLACE INTO transactions (
             id, description, amountCents, type, date, categoryId,
             paymentMethod, recurrence, installmentGroupId, installmentNumber,
-            totalInstallments, purchaseDate, invoiceMonth, isPaid, isAnticipated,
-            recurringTransactionId, createdAt
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+            totalInstallments, purchaseDate, invoiceMonth, isPaid, paidAt,
+            isAnticipated, notes, recurringTransactionId, createdAt
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
           t.id,
           t.description,
           t.amountCents,
@@ -107,7 +111,9 @@ export class SqliteTransactionRepository implements ITransactionRepository {
           t.purchaseDate ?? t.date,
           t.invoiceMonth ?? t.date.substring(0, 7),
           t.isPaid ? 1 : 0,
+          t.paidAt ?? null,
           t.isAnticipated ? 1 : 0,
+          t.notes ?? null,
           t.recurringTransactionId ?? null,
           t.createdAt
         );
@@ -126,8 +132,8 @@ export class SqliteTransactionRepository implements ITransactionRepository {
       `UPDATE transactions SET
         description = ?, amountCents = ?, type = ?, date = ?,
         categoryId = ?, paymentMethod = ?, recurrence = ?,
-        purchaseDate = ?, invoiceMonth = ?, isPaid = ?, isAnticipated = ?,
-        recurringTransactionId = ?
+        purchaseDate = ?, invoiceMonth = ?, isPaid = ?, paidAt = ?,
+        isAnticipated = ?, notes = ?, recurringTransactionId = ?
       WHERE id = ?;`,
       t.description,
       t.amountCents,
@@ -139,7 +145,9 @@ export class SqliteTransactionRepository implements ITransactionRepository {
       t.purchaseDate ?? t.date,
       t.invoiceMonth ?? t.date.substring(0, 7),
       t.isPaid ? 1 : 0,
+      t.paidAt ?? null,
       t.isAnticipated ? 1 : 0,
+      t.notes ?? null,
       t.recurringTransactionId ?? null,
       t.id
     );
@@ -160,8 +168,8 @@ export class SqliteTransactionRepository implements ITransactionRepository {
           `UPDATE transactions SET
             description = ?, amountCents = ?, type = ?, date = ?,
             categoryId = ?, paymentMethod = ?, recurrence = ?,
-            purchaseDate = ?, invoiceMonth = ?, isPaid = ?, isAnticipated = ?,
-            recurringTransactionId = ?
+            purchaseDate = ?, invoiceMonth = ?, isPaid = ?, paidAt = ?,
+            isAnticipated = ?, notes = ?, recurringTransactionId = ?
           WHERE id = ?;`,
           t.description,
           t.amountCents,
@@ -173,7 +181,9 @@ export class SqliteTransactionRepository implements ITransactionRepository {
           t.purchaseDate ?? t.date,
           t.invoiceMonth ?? t.date.substring(0, 7),
           t.isPaid ? 1 : 0,
+          t.paidAt ?? null,
           t.isAnticipated ? 1 : 0,
+          t.notes ?? null,
           t.recurringTransactionId ?? null,
           t.id
         );

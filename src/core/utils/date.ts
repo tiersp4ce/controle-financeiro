@@ -75,3 +75,23 @@ export function shiftMonthKey(monthKey: string, delta: number): string {
   const date = new Date(parseInt(yearStr, 10), parseInt(monthStr, 10) - 1 + delta, 1);
   return toMonthKey(date);
 }
+
+/**
+ * Formata um timestamp ISO no formato: "DD/MM/AAAA às HH:mm".
+ * Retorna string vazia se nulo/indefinido ou inválido.
+ */
+export function formatDateTimeBr(isoString: string | null | undefined): string {
+  if (!isoString) return '';
+  try {
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) return isoString;
+    const d = String(date.getDate()).padStart(2, '0');
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const y = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${d}/${m}/${y} às ${hours}:${minutes}`;
+  } catch {
+    return isoString;
+  }
+}
