@@ -43,7 +43,9 @@ export const SavingsAverageCard: React.FC<SavingsAverageCardProps> = ({ savingsS
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Ionicons name={getStatusIcon()} size={20} color={statusColor} />
-          <Text style={styles.title}>Média de Sobra Mensal</Text>
+          <Text style={styles.title}>
+            Sobra Média ({savingsSummary.evaluatedMonthsCount || 6} meses)
+          </Text>
         </View>
         <View style={[styles.badge, { backgroundColor: `${statusColor}22` }]}>
           <Text style={[styles.badgeText, { color: statusColor }]}>
@@ -53,7 +55,7 @@ export const SavingsAverageCard: React.FC<SavingsAverageCardProps> = ({ savingsS
       </View>
 
       <View style={styles.mainMetrics}>
-        <Text style={styles.metricLabel}>Sobra Média ({savingsSummary.evaluatedMonthsCount} meses)</Text>
+        <Text style={styles.metricLabel}>Economia média estimada</Text>
         <Text
           style={[
             styles.metricValue,
@@ -73,7 +75,7 @@ export const SavingsAverageCard: React.FC<SavingsAverageCardProps> = ({ savingsS
         </View>
         <View style={styles.subMetricDivider} />
         <View style={styles.subMetric}>
-          <Text style={styles.subMetricLabel}>Pior Mês</Text>
+          <Text style={styles.subMetricLabel}>Menor Mês</Text>
           <Text
             style={
               savingsSummary.worstMonthSavingsCents >= 0
@@ -84,10 +86,6 @@ export const SavingsAverageCard: React.FC<SavingsAverageCardProps> = ({ savingsS
             {centsToCurrency(savingsSummary.worstMonthSavingsCents)}
           </Text>
         </View>
-      </View>
-
-      <View style={styles.insightBox}>
-        <Text style={styles.insightText}>{savingsSummary.insightMessage}</Text>
       </View>
     </View>
   );
